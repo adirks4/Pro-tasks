@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pro Tasks</title>
+<style>
+
+/* ══════════════════════════════════════════
+   DESIGN TOKENS — professional light
+══════════════════════════════════════════ */
+:root {
+  --accent:     #2563eb;
+  --accent-dim: #1d4ed8;
+  --accent-bg:  rgba(37,99,235,0.08);
+  --green:      #059669;
+  --green-bg:   rgba(5,150,105,0.08);
+  --red:        #dc2626;
+  --red-bg:     rgba(220,38,38,0.08);
+  --amber:      #d97706;
+  --amber-bg:   rgba(217,119,6,0.08);
+  --blue:       #2563eb;
+  --blue-bg:    rgba(37,99,235,0.08);
+  --bg:         #f1f5f9;
+  --surface:    #ffffff;
+  --surface2:   #f8fafc;
+  --surface3:   #f1f5f9;
+  --border:     #e2e8f0;
+  --border2:    #cbd5e1;
+  --text:       #0f172a;
+  --text2:      #475569;
+  --text3:      #94a3b8;
+  --today-bg:   rgba(5,150,105,0.06);
+  --radius:     10px;
+  --radius-sm:  6px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --drawer-w:   260px;
+  --header-h:   56px;
+}
+
+/* ── RESET ── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+/* ══ CONNECT / LOCK SCREENS ══ */
+#connectScreen {
+  position:fixed; inset:0; background:var(--bg);
+  display:none; align-items:center; justify-content:center;
+  z-index:1000; flex-direction:column;
+  padding:env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);
+}
+#connectScreen.show { display:flex; }
+#lockScreen {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; align-items:center; justify-content:center;
+  z-index:999; flex-direction:column;
+  padding:env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);
+}
+#lockScreen.hidden { display:none; }
+
+.lock-card {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:16px; padding:28px 24px; width:min(300px,88vw);
+  display:flex; flex-direction:column; gap:14px; align-items:center;
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+}
+.lock-icon { font-size:2em; }
+.lock-title { font-size:1.05em; font-weight:700; color:var(--text); text-align:center; }
+.lock-subtitle { font-size:0.78em; color:var(--text2); text-align:center; line-height:1.55; margin-top:-6px; }
+.lock-btn {
+  width:100%; padding:11px; background:var(--accent); border:none;
+  color:#fff; font-size:0.9em; font-weight:700; border-radius:var(--radius-sm);
+  cursor:pointer; font-family:var(--font); transition:opacity 0.15s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.lock-btn:hover { opacity:0.88; }
+.lock-btn.secondary {
+  background:var(--surface2); color:var(--text2);
+  border:1px solid var(--border2); font-weight:500;
+}
+.lock-btn.secondary:hover { border-color:var(--accent); color:var(--accent); opacity:1; }
+.lock-err {
+  font-size:0.76em; color:var(--red); text-align:center;
+  background:var(--red-bg); border:1px solid rgba(220,38,38,0.25);
+  border-radius:var(--radius-sm); padding:7px 10px; width:100%; display:none;
+}
+.lock-err.show { display:block; }
+.lock-spinner {
+  width:16px; height:16px; border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; display:none;
+}
+.lock-btn.loading .lock-spinner { display:inline-block; }
+.lock-btn.loading .lock-btn-text { display:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* PIN dots & keypad */
+.pin-dots { display:flex; gap:14px; justify-content:center; margin:2px 0; }
+.pin-dot {
+  width:13px; height:13px; border-radius:50%;
+  border:2px solid var(--border2); background:transparent; transition:all 0.12s;
+}
+.pin-dot.filled { background:var(--accent); border-color:var(--accent); }
+.pin-dot.error  { background:var(--red); border-color:var(--red); animation:shake 0.4s ease; }
+@keyframes shake {
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-5px); } 40%{ transform:translateX(5px); }
+  60%{ transform:translateX(-3px); } 80%{ transform:translateX(3px); }
+}
+.pin-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; }
+.pin-key {
+  height:58px; background:var(--surface2); border:1px solid var(--border);
+  border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:1.35em; font-weight:600; color:var(--text); cursor:pointer;
+  transition:all 0.1s; user-select:none; font-family:var(--font);
+  -webkit-tap-highlight-color:transparent;
+}
+.pin-key:hover { background:var(--surface3); border-color:var(--accent); }
+.pin-key:active { transform:scale(0.93); background:var(--accent-bg); }
+.pin-key.del { font-size:1.1em; color:var(--text2); }
+.pin-key.empty { visibility:hidden; pointer-events:none; }
+
+.setup-step { display:none; flex-direction:column; gap:14px; align-items:center; width:100%; }
+.setup-step.active { display:flex; }
+.step-indicator { display:flex; gap:6px; justify-content:center; }
+.step-dot { width:7px; height:7px; border-radius:50%; background:var(--border2); transition:background 0.2s; }
+.step-dot.active { background:var(--accent); }
+.step-dot.done { background:var(--green); }
+
+/* ══ APP SHELL ══ */
+#app { display:none; flex-direction:column; height:100%; height:100dvh;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+
+/* ── HEADER ── */
+#header {
+  height:var(--header-h); min-height:var(--header-h);
+  background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 14px; gap:10px;
+  z-index:50; box-shadow:0 1px 0 var(--border), 0 2px 8px rgba(37,99,235,0.04);
+}
+#hamburger {
+  width:36px; height:36px; display:flex; flex-direction:column;
+  justify-content:center; gap:5px; cursor:pointer; flex-shrink:0;
+  padding:6px; border-radius:var(--radius-sm); transition:background 0.15s;
+}
+#hamburger:hover { background:var(--surface3); }
+#hamburger span {
+  display:block; height:1.5px; background:var(--text2); border-radius:2px;
+  transition:all 0.25s cubic-bezier(0.4,0,0.2,1); transform-origin:center;
+}
+body.drawer-open #hamburger span:nth-child(1) { transform:translateY(6.5px) rotate(45deg); }
+body.drawer-open #hamburger span:nth-child(2) { opacity:0; transform:scaleX(0); }
+body.drawer-open #hamburger span:nth-child(3) { transform:translateY(-6.5px) rotate(-45deg); }
+
+#header-title {
+  font-size:0.9em; font-weight:700; letter-spacing:0.05em;
+  color:var(--text); text-transform:uppercase; flex:1;
+}
+
+/* workspace switcher */
+#wsSwitcher {
+  display:flex; gap:3px; background:var(--surface3);
+  border:1px solid var(--border2); border-radius:20px; padding:3px;
+}
+.ws-btn {
+  font-size:0.7em; font-weight:700; letter-spacing:0.03em;
+  padding:4px 11px; border-radius:16px; cursor:pointer;
+  border:none; background:none; color:var(--text2);
+  font-family:var(--font); transition:all 0.2s; white-space:nowrap; max-width:110px;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.ws-btn.active { background:var(--accent); color:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+
+#header-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.hdr-btn {
+  background:var(--surface3); border:1px solid var(--border); color:var(--text2);
+  font-size:0.72em; padding:5px 9px; border-radius:var(--radius-sm);
+  cursor:pointer; font-family:var(--font); transition:all 0.15s; white-space:nowrap;
+}
+.hdr-btn:hover { border-color:var(--accent); color:var(--accent); }
+#syncDot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+  background:var(--text3); transition:background 0.3s; cursor:pointer;
+}
+#syncDot.synced  { background:var(--green); }
+#syncDot.syncing { background:var(--amber); animation:pulse 1s infinite; }
+#syncDot.error   { background:var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── TODAY PANEL ── */
+#todayPanel {
+  background:var(--surface); border-bottom:1px solid var(--border);
+  flex-shrink:0; position:relative;
+}
+#todayPanel::before {
+  content:''; position:absolute; left:0; top:0; bottom:0;
+  width:3px; background:var(--accent); border-radius:0 2px 2px 0;
+}
+#todayHeader { display:flex; align-items:center; gap:8px; padding:10px 16px 0; }
+#todayMeta { display:flex; align-items:baseline; gap:6px; }
+#todayMeta .label { font-size:0.68em; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent); }
+#todayCount { font-size:1.2em; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1; }
+#showDoneWrap { margin-left:auto; display:flex; align-items:center; gap:6px; }
+#showDoneWrap label { font-size:0.72em; color:var(--text3); cursor:pointer; user-select:none; }
+.toggle { position:relative; width:32px; height:18px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-track {
+  position:absolute; inset:0; background:var(--surface3);
+  border:1px solid var(--border2); border-radius:9px; cursor:pointer; transition:all 0.2s;
+}
+.toggle input:checked ~ .toggle-track { background:var(--accent-bg); border-color:var(--accent); }
+.toggle-thumb {
+  position:absolute; top:2px; left:2px; width:12px; height:12px;
+  background:var(--text3); border-radius:50%; transition:all 0.2s; pointer-events:none;
+}
+.toggle input:checked ~ .toggle-track .toggle-thumb { transform:translateX(14px); background:var(--accent); }
+#todayRows { padding:6px 16px 10px; display:flex; flex-direction:column; gap:4px; }
+.today-row-item {
+  display:flex; align-items:center; gap:10px;
+  background:var(--today-bg); border-radius:var(--radius-sm);
+  padding:7px 10px; min-height:38px;
+}
+.today-row-item .tri-check { display:none; }
+.today-row-item .tri-visual {
+  width:16px; height:16px; border:1.5px solid var(--border2); border-radius:50%;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all 0.15s;
+}
+.today-row-item .tri-visual:hover { border-color:var(--accent); }
+.today-row-item .tri-check:checked + .tri-visual { background:var(--accent); border-color:var(--accent); }
+.today-row-item .tri-check:checked + .tri-visual::after {
+  content:''; display:block; width:4px; height:7px;
+  border:1.5px solid #fff; border-top:none; border-left:none;
+  transform:rotate(45deg) translateY(-1px);
+}
+.today-row-item .tri-name { font-size:0.88em; color:var(--text); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.today-row-item .tri-project { font-size:0.68em; color:var(--text3); white-space:nowrap; }
+.today-row-item.done-today .tri-name { text-decoration:line-through; color:var(--text3); }
+
+/* ── BODY / DRAWER ── */
+#body { display:flex; flex:1; overflow:hidden; position:relative; }
+#drawerOverlay {
+  display:none; position:absolute; inset:0;
+  background:rgba(0,0,0,0.3); z-index:40; backdrop-filter:blur(2px);
+}
+body.drawer-open #drawerOverlay { display:block; }
+#drawer {
+  position:absolute; top:0; left:0; width:var(--drawer-w); height:100%;
+  background:var(--surface); border-right:1px solid var(--border);
+  z-index:45; transform:translateX(-100%);
+  transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+body.drawer-open #drawer { transform:translateX(0); }
+.drawer-ws-label { font-size:0.6em; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); padding:18px 18px 6px; }
+.drawer-item {
+  display:flex; align-items:center; gap:12px; padding:11px 18px;
+  cursor:pointer; border-left:2px solid transparent; transition:all 0.15s;
+  color:var(--text2); font-size:0.88em; font-weight:500;
+}
+.drawer-item:hover { background:var(--surface2); color:var(--text); }
+.drawer-item.active { border-left-color:var(--accent); background:var(--accent-bg); color:var(--accent); }
+.drawer-item .di-icon { width:18px; text-align:center; }
+.drawer-item .di-badge {
+  margin-left:auto; background:var(--surface3); color:var(--text3);
+  font-size:0.7em; padding:1px 6px; border-radius:10px; font-variant-numeric:tabular-nums;
+}
+.drawer-item.active .di-badge { background:var(--accent-bg); color:var(--accent); }
+.drawer-divider { height:1px; background:var(--border); margin:6px 0; }
+.drawer-footer { margin-top:auto; padding:14px 18px calc(14px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--border); display:flex; flex-direction:column; gap:7px; }
+.drawer-footer-btn {
+  background:var(--surface2); border:1px solid var(--border); color:var(--text2);
+  font-size:0.78em; padding:7px 12px; border-radius:var(--radius-sm);
+  cursor:pointer; font-family:var(--font); text-align:left;
+  transition:all 0.15s; display:flex; align-items:center; gap:8px;
+}
+.drawer-footer-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── CONTENT ── */
+#content { flex:1; overflow-y:auto; overflow-x:hidden; padding:18px 16px calc(48px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch; }
+.section { display:none; }
+.section.active { display:block; }
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.section-title { font-size:0.65em; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--text3); }
+.add-btn {
+  display:flex; align-items:center; gap:5px; background:var(--surface2);
+  border:1px solid var(--border); color:var(--text2); font-size:0.78em;
+  padding:6px 12px; border-radius:var(--radius-sm); cursor:pointer;
+  font-family:var(--font); transition:all 0.15s;
+}
+.add-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+
+/* ══ TASK ROWS ══ */
+.task-list { display:flex; flex-direction:column; gap:0; }
+.status-group { margin-bottom:14px; }
+.status-group-label {
+  font-size:0.6em; font-weight:800; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text3); padding:0 4px 6px; display:flex; align-items:center; gap:8px;
+}
+.status-group-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.t-row {
+  display:grid; align-items:start; background:var(--surface2);
+  border-bottom:1px solid var(--border); transition:background 0.1s; min-height:52px; position:relative;
+}
+.t-row:first-child { border-radius:var(--radius) var(--radius) 0 0; }
+.t-row:last-child { border-bottom:none; border-radius:0 0 var(--radius) var(--radius); }
+.t-row:only-child { border-radius:var(--radius); }
+.t-row:hover { background:var(--surface3); }
+.t-row.ctrl { grid-template-columns:36px 1fr auto 32px; }
+.t-row.sub  { grid-template-columns:36px 1fr auto 32px; }
+.t-row.ref  { grid-template-columns:1fr 1fr 32px; }
+.t-row.done-row { opacity:0.35; }
+.t-row.done-row .t-name { text-decoration:line-through; }
+.t-row.today-hl { background:var(--today-bg); }
+.t-row.overdue-row { background:rgba(220,38,38,0.03); }
+
+.proj-group { margin-bottom:10px; }
+.proj-hdr-row {
+  display:grid; grid-template-columns:28px 36px 1fr auto 32px;
+  align-items:start; background:var(--surface); border:1px solid var(--border2);
+  border-radius:var(--radius) var(--radius) 0 0; min-height:48px; position:relative;
+}
+.proj-hdr-row.solo { border-radius:var(--radius); }
+.proj-hdr-row.overdue-row { background:rgba(220,38,38,0.03); }
+.proj-subs { border:1px solid var(--border2); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow:hidden; }
+.proj-subs.collapsed { display:none; }
+
+.move-btns { display:flex; flex-direction:column; justify-content:center; gap:1px; padding:0 2px; align-self:center; }
+.move-btn {
+  width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+  background:none; border:none; color:var(--text3); font-size:0.7em;
+  cursor:pointer; border-radius:4px; transition:all 0.15s; font-family:var(--font);
+}
+.move-btn:hover { background:var(--surface3); color:var(--text); }
+.move-btn:disabled { opacity:0.18; cursor:default; }
+
+.proj-color-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0; cursor:pointer;
+  border:1.5px solid rgba(0,0,0,0.1); transition:transform 0.15s;
+}
+.proj-color-dot:hover { transform:scale(1.35); }
+.color-picker-pop {
+  position:absolute; top:100%; left:36px; z-index:100;
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:8px; padding:8px; display:flex; flex-wrap:wrap;
+  gap:6px; width:152px; box-shadow:0 4px 16px rgba(0,0,0,0.15);
+}
+.color-swatch {
+  width:22px; height:22px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; transition:transform 0.12s;
+}
+.color-swatch:hover { transform:scale(1.2); }
+.color-swatch.selected { border-color:var(--text); }
+
+.c-check { display:flex; align-items:center; justify-content:center; padding-top:14px; align-self:start; }
+.t-check { display:none; }
+.check-vis {
+  width:18px; height:18px; border:1.5px solid var(--border2); border-radius:50%;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0;
+}
+.check-vis:hover { border-color:var(--accent); }
+.t-check:checked + .check-vis { background:var(--accent); border-color:var(--accent); }
+.t-check:checked + .check-vis::after {
+  content:''; display:block; width:5px; height:8px;
+  border:1.5px solid #fff; border-top:none; border-left:none;
+  transform:rotate(45deg) translateY(-1px);
+}
+.c-name { padding:12px 8px 12px 0; min-width:0; }
+.t-name {
+  font-size:0.9em; color:var(--text); outline:none;
+  word-break:break-word; line-height:1.5; white-space:pre-wrap;
+}
+.t-name:empty:before { content:attr(data-ph); color:var(--text3); pointer-events:none; white-space:nowrap; }
+.t-source {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:0.65em; font-weight:600; letter-spacing:0.04em;
+  color:var(--accent); background:var(--accent-bg); border-radius:4px;
+  padding:1px 5px; margin-top:3px; white-space:nowrap;
+}
+.c-status { padding:12px 8px 0 0; display:flex; align-items:flex-start; }
+.badge {
+  display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px;
+  font-size:0.7em; font-weight:700; cursor:pointer; user-select:none;
+  white-space:nowrap; border:1px solid transparent; transition:all 0.15s;
+  font-family:var(--font); letter-spacing:0.02em;
+}
+.badge-Next    { background:var(--blue-bg);  color:var(--blue);  border-color:rgba(37,99,235,0.25); }
+.badge-Today   { background:var(--green-bg); color:var(--green); border-color:rgba(5,150,105,0.25); }
+.badge-Waiting { background:var(--amber-bg); color:var(--amber); border-color:rgba(217,119,6,0.25); }
+.badge-Done    { background:var(--surface3); color:var(--text3); border-color:var(--border); }
+.badge:hover { filter:brightness(0.95); }
+.c-del { display:flex; align-items:center; justify-content:center; padding-top:12px; align-self:start; }
+.del-btn {
+  width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+  background:none; border:none; color:var(--text3); font-size:0.8em;
+  cursor:pointer; border-radius:var(--radius-sm); transition:all 0.15s; font-family:var(--font);
+}
+.del-btn:hover { background:var(--red-bg); color:var(--red); }
+
+.c-proj-name { padding:10px 8px 10px 0; display:flex; align-items:center; gap:7px; flex-wrap:wrap; position:relative; }
+.collapse-btn {
+  width:18px; height:18px; display:flex; align-items:center; justify-content:center;
+  background:none; border:none; font-size:0.65em;
+  cursor:pointer; flex-shrink:0; transition:transform 0.2s; font-family:var(--font);
+}
+.collapse-btn.collapsed { transform:rotate(-90deg); }
+.proj-name-text {
+  font-size:0.78em; font-weight:800; letter-spacing:0.07em; text-transform:uppercase;
+  outline:none; flex:1; min-width:0; word-break:break-word; white-space:pre-wrap;
+}
+.add-sub-btn {
+  background:none; border:1px solid var(--border2); color:var(--text3);
+  font-size:0.65em; padding:2px 7px; border-radius:20px; cursor:pointer;
+  font-family:var(--font); transition:all 0.15s; white-space:nowrap; flex-shrink:0;
+}
+.add-sub-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.sub .c-name { padding-left:10px; display:flex; align-items:flex-start; gap:6px; }
+.sub .c-name::before {
+  content:''; display:inline-block; width:10px; height:10px; flex-shrink:0; margin-top:6px;
+  border-left:1.5px solid var(--border2); border-bottom:1.5px solid var(--border2);
+  border-radius:0 0 0 3px;
+}
+.sub .t-name { flex:1; }
+
+/* due date */
+.due-wrap { display:flex; align-items:center; gap:4px; margin-top:3px; }
+.due-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:0.65em; font-weight:600; padding:2px 7px;
+  border-radius:20px; cursor:pointer; user-select:none;
+  border:1px solid transparent; transition:all 0.15s;
+  white-space:nowrap; font-family:var(--font);
+}
+.due-chip.no-date  { color:var(--text3); border-color:var(--border2); background:var(--surface3); }
+.due-chip.upcoming { color:var(--blue);  border-color:rgba(37,99,235,0.3); background:var(--blue-bg); }
+.due-chip.due-soon { color:var(--amber); border-color:rgba(217,119,6,0.3); background:var(--amber-bg); }
+.due-chip.overdue  { color:var(--red);   border-color:rgba(220,38,38,0.3); background:var(--red-bg); }
+.due-chip.due-today{ color:var(--green); border-color:rgba(5,150,105,0.3); background:var(--green-bg); }
+.due-chip:hover { filter:brightness(0.95); }
+.t-row.sub { min-height:56px; }
+.c-name { padding-bottom:10px; }
+.date-pop {
+  position:fixed; z-index:500; background:var(--surface); border:1px solid var(--border2);
+  border-radius:10px; padding:14px; box-shadow:0 8px 32px rgba(0,0,0,0.15);
+  display:flex; flex-direction:column; gap:10px; width:220px;
+}
+.date-pop-label { font-size:0.72em; font-weight:700; color:var(--text2); letter-spacing:0.06em; text-transform:uppercase; }
+.date-pop-input {
+  width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text);
+  font-size:0.88em; padding:8px 10px; border-radius:var(--radius-sm);
+  font-family:var(--font); outline:none; transition:border-color 0.15s;
+}
+.date-pop-input:focus { border-color:var(--accent); }
+.date-pop-row { display:flex; gap:6px; }
+.date-pop-btn {
+  flex:1; padding:7px; border-radius:var(--radius-sm); font-size:0.78em;
+  font-weight:600; cursor:pointer; font-family:var(--font);
+  border:1px solid var(--border2); background:var(--surface2); color:var(--text2); transition:all 0.15s;
+}
+.date-pop-btn:hover { border-color:var(--accent); color:var(--accent); }
+.date-pop-btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.date-pop-btn.clear { color:var(--red); }
+.date-pop-btn.clear:hover { border-color:var(--red); background:var(--red-bg); }
+
+/* ref cells */
+.ref-cell {
+  padding:12px 8px; font-size:0.88em; color:var(--text); outline:none;
+  word-break:break-word; white-space:pre-wrap; align-self:start;
+}
+.ref-cell.notes { color:var(--text2); font-size:0.83em; }
+.ref-cell:empty:before { content:attr(data-ph); color:var(--text3); pointer-events:none; }
+.empty-state { text-align:center; padding:44px 20px; color:var(--text3); font-size:0.85em; }
+.empty-state .ei { font-size:1.8em; margin-bottom:8px; }
+
+/* ══ WORKSPACE RENAME MODAL ══ */
+.modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:14px; padding:24px; width:min(400px,100%);
+  display:flex; flex-direction:column; gap:16px;
+}
+.modal h3 { font-size:0.95em; font-weight:700; color:var(--text); }
+.form-row { display:flex; flex-direction:column; gap:6px; }
+.form-label { font-size:0.7em; font-weight:600; color:var(--text3); letter-spacing:0.07em; text-transform:uppercase; }
+.form-input {
+  background:var(--surface2); border:1px solid var(--border2); color:var(--text);
+  font-size:0.9em; padding:10px 12px; border-radius:var(--radius-sm);
+  font-family:var(--font); outline:none; transition:border-color 0.15s; width:100%;
+}
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--text3); }
+.btn-row { display:flex; gap:8px; }
+.btn {
+  flex:1; padding:10px; border-radius:var(--radius-sm); font-size:0.85em;
+  font-weight:600; cursor:pointer; font-family:var(--font);
+  border:1px solid var(--border2); background:var(--surface2); color:var(--text2); transition:all 0.15s;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.primary:hover { opacity:0.9; }
+
+/* ══ SETTINGS MODAL ══ */
+#settingsOverlay { z-index:300; }
+.s-desc { font-size:0.8em; color:var(--text2); line-height:1.65; }
+.s-desc code { background:var(--surface3); padding:1px 5px; border-radius:4px; font-size:0.9em; color:var(--text); }
+.s-status {
+  font-size:0.78em; padding:8px 11px; border-radius:var(--radius-sm); display:none; line-height:1.4;
+}
+.s-status.show { display:block; }
+.s-status.ok  { background:var(--green-bg); color:var(--green); border:1px solid rgba(5,150,105,0.3); }
+.s-status.err { background:var(--red-bg);   color:var(--red);   border:1px solid rgba(220,38,38,0.3); }
+.s-row { display:flex; gap:8px; flex-wrap:wrap; }
+.s-btn {
+  flex:1; padding:9px 14px; border-radius:var(--radius-sm); font-size:0.83em;
+  font-weight:600; cursor:pointer; font-family:var(--font); border:1px solid var(--border2);
+  background:var(--surface2); color:var(--text2); transition:all 0.15s; white-space:nowrap;
+}
+.s-btn:hover { border-color:var(--accent); color:var(--accent); }
+.s-btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.s-btn.danger { color:var(--red); }
+.s-btn.danger:hover { border-color:var(--red); background:var(--red-bg); }
+
+/* responsive */
+@media (min-width:768px) {
+  #drawer { position:relative; transform:none !important; flex-shrink:0; }
+  #drawerOverlay { display:none !important; }
+  #hamburger { display:none; }
+  #content { padding:22px 22px calc(56px + env(safe-area-inset-bottom)); }
+}
+@media (pointer:coarse) {
+  .del-btn,.move-btn,.collapse-btn { min-width:44px; min-height:44px; }
+  .badge { padding:6px 12px; }
+  .check-vis { width:22px; height:22px; }
+  .add-btn { padding:10px 16px; }
+  .hdr-btn { padding:8px 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ CONNECT SCREEN ══ -->
+<div id="connectScreen">
+  <div class="lock-card">
+    <div class="lock-icon">💼</div>
+    <div class="lock-title">Pro Tasks</div>
+    <div class="lock-subtitle">Connect your Dropbox to sync across all your devices.</div>
+    <button onclick="startOAuth()" class="lock-btn">
+      <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
+        <path d="M10 5L20 12L10 19L0 12Z" fill="white"/>
+        <path d="M30 5L40 12L30 19L20 12Z" fill="white"/>
+        <path d="M0 26L10 19L20 26L10 33Z" fill="white"/>
+        <path d="M20 26L30 19L40 26L30 33Z" fill="white"/>
+        <path d="M10 35L20 28L30 35L20 42Z" fill="white"/>
+      </svg>
+      <span>Connect to Dropbox</span>
+    </button>
+    <div id="connectErr" class="lock-err"></div>
+  </div>
+</div>
+
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot0"></div>
+      <div class="step-dot" id="dot1"></div>
+    </div>
+    <!-- login -->
+    <div class="setup-step active" id="step-login">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">Pro Tasks</div>
+      <div class="lock-subtitle">Enter your 4-digit PIN</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="ld0"></div><div class="pin-dot" id="ld1"></div>
+        <div class="pin-dot" id="ld2"></div><div class="pin-dot" id="ld3"></div>
+      </div>
+      <div id="loginErr" class="lock-err"></div>
+      <div class="pin-keypad" id="loginKeypad"></div>
+      <button class="lock-btn secondary" onclick="goSetup()" style="font-size:0.78em;padding:8px">First time on this device?</button>
+    </div>
+    <!-- setup -->
+    <div class="setup-step" id="step-pass">
+      <div class="lock-icon">🔑</div>
+      <div class="lock-title">Choose a PIN</div>
+      <div class="lock-subtitle" id="pinSetupSubtitle">Choose a 4-digit PIN</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="sd0"></div><div class="pin-dot" id="sd1"></div>
+        <div class="pin-dot" id="sd2"></div><div class="pin-dot" id="sd3"></div>
+      </div>
+      <div id="setupPassErr" class="lock-err"></div>
+      <div class="pin-keypad" id="setupKeypad"></div>
+      <button class="lock-btn secondary" onclick="goLogin()" style="font-size:0.78em;padding:8px">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <div id="header">
+    <div id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></div>
+    <div id="header-title">Pro Tasks</div>
+    <div id="wsSwitcher">
+      <button class="ws-btn active" id="ws-btn-0" onclick="switchWS(0)">Workspace 1</button>
+      <button class="ws-btn" id="ws-btn-1" onclick="switchWS(1)">Workspace 2</button>
+    </div>
+    <div id="header-actions">
+      <div id="syncDot" onclick="syncNow()" title="Sync status"></div>
+      <button class="hdr-btn" onclick="openSettings()">⚙</button>
+      <button class="hdr-btn" onclick="lockApp()">🔒</button>
+    </div>
+  </div>
+
+  <div id="todayPanel">
+    <div id="todayHeader">
+      <div id="todayMeta"><span class="label">Today</span><span id="todayCount">0</span></div>
+      <div id="showDoneWrap">
+        <label class="toggle">
+          <input type="checkbox" id="showDoneChk" onchange="render()">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+        <label for="showDoneChk">Show done</label>
+      </div>
+    </div>
+    <div id="todayRows"></div>
+  </div>
+
+  <div id="body">
+    <div id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div id="drawer">
+      <div class="drawer-ws-label" id="drawerWsLabel">Workspace 1</div>
+      <div class="drawer-item active" data-sec="control" onclick="switchSection('control',this)">
+        <span class="di-icon">◈</span> Control <span class="di-badge" id="db-control">0</span>
+      </div>
+      <div class="drawer-item" data-sec="projects" onclick="switchSection('projects',this)">
+        <span class="di-icon">⬡</span> Projects <span class="di-badge" id="db-projects">0</span>
+      </div>
+      <div class="drawer-item" data-sec="reference" onclick="switchSection('reference',this)">
+        <span class="di-icon">◻</span> Reference <span class="di-badge" id="db-reference">0</span>
+      </div>
+      <div class="drawer-divider"></div>
+      <div class="drawer-footer">
+        <button class="drawer-footer-btn" onclick="openRenameWS()">✏ Rename workspaces</button>
+        <button class="drawer-footer-btn" onclick="openSettings()">⚙ Settings</button>
+        <button class="drawer-footer-btn" onclick="exportData()">↓ Export backup</button>
+        <button class="drawer-footer-btn" onclick="importData()">↑ Import backup</button>
+        <button class="drawer-footer-btn" onclick="lockApp()">🔒 Lock</button>
+      </div>
+    </div>
+
+    <div id="content">
+      <div id="section-control" class="section active">
+        <div class="section-header">
+          <div class="section-title">Control</div>
+          <button class="add-btn" onclick="addManualTask()">+ Task</button>
+        </div>
+        <div class="task-list" id="controlList"></div>
+      </div>
+      <div id="section-projects" class="section">
+        <div class="section-header">
+          <div class="section-title">Projects</div>
+          <button class="add-btn" onclick="addProject()">+ Project</button>
+        </div>
+        <div id="projectsList"></div>
+      </div>
+      <div id="section-reference" class="section">
+        <div class="section-header">
+          <div class="section-title">Reference</div>
+          <button class="add-btn" onclick="addRefItem()">+ Item</button>
+        </div>
+        <div class="task-list" id="referenceList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME WORKSPACES MODAL -->
+<div id="renameOverlay" class="modal-overlay" onclick="if(event.target.id==='renameOverlay')closeRenameWS()">
+  <div class="modal">
+    <h3>Rename Workspaces</h3>
+    <div class="form-row">
+      <div class="form-label">Workspace 1 name</div>
+      <input type="text" id="ws0Name" class="form-input" placeholder="e.g. Client Work">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Workspace 2 name</div>
+      <input type="text" id="ws1Name" class="form-input" placeholder="e.g. Side Projects">
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveWSNames()">Save</button>
+      <button class="btn" onclick="closeRenameWS()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsOverlay" class="modal-overlay" onclick="if(event.target.id==='settingsOverlay')closeSettings()">
+  <div class="modal">
+    <h3>⚙ Settings &amp; Sync</h3>
+    <div class="s-desc">
+      Connected to Dropbox via OAuth. Data syncs to <code>pro-tasks.json</code>
+      in your Dropbox app folder. Your PIN encrypts data locally.
+    </div>
+    <div id="settingsStatus" class="s-status"></div>
+    <div class="s-row">
+      <button class="s-btn" onclick="syncNow()">↻ Sync now</button>
+      <button class="s-btn danger" onclick="forceReload()">↺ Force reload</button>
+    </div>
+    <div class="s-row">
+      <button class="s-btn" onclick="changePin()">Change PIN</button>
+      <button class="s-btn danger" onclick="disconnectDropbox()">Disconnect Dropbox</button>
+    </div>
+    <div class="s-row">
+      <button class="s-btn danger" onclick="resetEverything()">⚠ Reset everything</button>
+      <button class="s-btn" onclick="closeSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+//  CRYPTO — AES-256-GCM + PBKDF2 (PIN as key)
+// ══════════════════════════════════════════════════════════════════
+const PBKDF2_ITERS=100000;
+const _e=new TextEncoder(), _d=new TextDecoder();
+async function deriveKey(pin,salt){
+  const km=await crypto.subtle.importKey('raw',_e.encode(pin),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:PBKDF2_ITERS,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encrypt(plain,pin){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pin,salt);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,_e.encode(plain));
+  const out=new Uint8Array(16+12+ct.byteLength);
+  out.set(salt,0);out.set(iv,16);out.set(new Uint8Array(ct),28);
+  return btoa(String.fromCharCode(...out));
+}
+async function decrypt(b64,pin){
+  const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const key=await deriveKey(pin,bytes.slice(0,16));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes.slice(16,28)},key,bytes.slice(28));
+  return _d.decode(pt);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SESSION
+// ══════════════════════════════════════════════════════════════════
+let SESSION_PIN=null;
+const isPinSetup=()=>!!localStorage.getItem('pt_pin_verify');
+const isConnected=()=>!!localStorage.getItem('pt_refresh_token');
+
+// ══════════════════════════════════════════════════════════════════
+//  OAUTH PKCE
+// ══════════════════════════════════════════════════════════════════
+// ── SET YOUR DROPBOX APP KEY HERE ──
+const DBX_APP_KEY='YOUR_APP_KEY_HERE';
+const REDIRECT_URI=window.location.origin+window.location.pathname.replace(/\/$/,'');
+const DBX_PATH='/pro-tasks.json';
+
+let _cachedToken=null,_tokenExpiry=0,syncTimer=null,lastSyncError=null;
+
+function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function sha256(s){return crypto.subtle.digest('SHA-256',_e.encode(s));}
+function randStr(n=64){const a=new Uint8Array(n);crypto.getRandomValues(a);return b64url(a);}
+
+async function startOAuth(){
+  if(DBX_APP_KEY==='YOUR_APP_KEY_HERE'){
+    showConnectErr('App key not set — open the file and set DBX_APP_KEY.');return;
+  }
+  const v=randStr(64),ch=b64url(await sha256(v));
+  sessionStorage.setItem('pt_verifier',v);
+  const p=new URLSearchParams({client_id:DBX_APP_KEY,redirect_uri:REDIRECT_URI,response_type:'code',code_challenge:ch,code_challenge_method:'S256',token_access_type:'offline'});
+  window.location.href='https://www.dropbox.com/oauth2/authorize?'+p;
+}
+async function handleOAuthCallback(code){
+  const v=sessionStorage.getItem('pt_verifier');
+  if(!v) throw new Error('No PKCE verifier — please try connecting again.');
+  const res=await fetch('https://api.dropboxapi.com/oauth2/token',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams({code,grant_type:'authorization_code',client_id:DBX_APP_KEY,redirect_uri:REDIRECT_URI,code_verifier:v})
+  });
+  if(!res.ok){const t=await res.text();throw new Error('Token exchange failed: '+t);}
+  const json=await res.json();
+  if(!json.refresh_token) throw new Error('No refresh token returned.');
+  localStorage.setItem('pt_refresh_token',json.refresh_token);
+  _cachedToken=json.access_token;
+  _tokenExpiry=Date.now()+(json.expires_in||14400)*1000-60000;
+  sessionStorage.removeItem('pt_verifier');
+  window.history.replaceState({},document.title,window.location.pathname);
+}
+async function getToken(){
+  if(_cachedToken&&Date.now()<_tokenExpiry) return _cachedToken;
+  const refresh=localStorage.getItem('pt_refresh_token');
+  if(!refresh) return null;
+  try{
+    const res=await fetch('https://api.dropboxapi.com/oauth2/token',{
+      method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({grant_type:'refresh_token',refresh_token:refresh,client_id:DBX_APP_KEY})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    _cachedToken=json.access_token;
+    _tokenExpiry=Date.now()+(json.expires_in||14400)*1000-60000;
+    return _cachedToken;
+  }catch(e){
+    _cachedToken=null;localStorage.removeItem('pt_refresh_token');showConnectScreen();return null;
+  }
+}
+const setSyncStatus=s=>{const d=document.getElementById('syncDot');if(d)d.className=s;};
+
+async function loadFromDropbox(){
+  const token=await getToken();if(!token){setSyncStatus('offline');return null;}
+  setSyncStatus('syncing');
+  try{
+    const res=await fetch('https://content.dropboxapi.com/2/files/download',{
+      method:'POST',headers:{'Authorization':'Bearer '+token,'Dropbox-API-Arg':JSON.stringify({path:DBX_PATH})}
+    });
+    if(res.status===409){setSyncStatus('synced');return 'empty';}
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const raw=await res.text();
+    let parsed;
+    try{const pt=await decrypt(raw,SESSION_PIN);parsed=JSON.parse(pt);}
+    catch(e){try{parsed=JSON.parse(raw);}catch(e2){throw new Error('Cannot read data.');}}
+    setSyncStatus('synced');return parsed;
+  }catch(e){setSyncStatus('error');lastSyncError=e.message;return null;}
+}
+async function saveToDropbox(){
+  const token=await getToken();if(!token){setSyncStatus('offline');return false;}
+  setSyncStatus('syncing');
+  try{
+    const ct=await encrypt(JSON.stringify(data),SESSION_PIN);
+    const res=await fetch('https://content.dropboxapi.com/2/files/upload',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Dropbox-API-Arg':JSON.stringify({path:DBX_PATH,mode:'overwrite',autorename:false,mute:true}),'Content-Type':'application/octet-stream'},
+      body:ct
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    setSyncStatus('synced');return true;
+  }catch(e){setSyncStatus('error');lastSyncError=e.message;return false;}
+}
+function scheduleSync(){
+  data._v=Date.now();
+  try{encrypt(JSON.stringify(data),SESSION_PIN).then(enc=>localStorage.setItem('pt_data',enc));}catch(e){}
+  clearTimeout(syncTimer);setSyncStatus('syncing');
+  syncTimer=setTimeout(()=>saveToDropbox(),2000);
+}
+async function syncNow(){clearTimeout(syncTimer);await saveToDropbox();}
+
+// ══════════════════════════════════════════════════════════════════
+//  DATA MODEL
+// ══════════════════════════════════════════════════════════════════
+function emptyWS(){
+  return {control:[],projects:[],reference:[]};
+}
+let data={
+  wsNames:['Workspace 1','Workspace 2'],
+  ws:[emptyWS(),emptyWS()],
+  _v:0
+};
+let currentWS=0;
+const ws=()=>data.ws[currentWS];
+const uid=()=>Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
+const STATUSES=['Today','Next','Waiting','Done'];
+const CYCLE_STATUSES=['Today','Next','Waiting'];
+const BADGE_CLS={Next:'badge-Next',Today:'badge-Today',Waiting:'badge-Waiting',Done:'badge-Done'};
+const PROJ_COLORS=['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#db2777','#0891b2','#65a30d','#ea580c','#64748b'];
+const nextStatus=cur=>{
+  const idx=CYCLE_STATUSES.indexOf(cur);
+  return idx===-1?'Waiting':CYCLE_STATUSES[(idx+1)%CYCLE_STATUSES.length];
+};
+const escHtml=s=>!s?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function migrateIfNeeded(parsed){
+  if(!parsed) return null;
+  if(parsed.ws&&parsed.wsNames) return parsed;
+  return null;
+}
+
+async function loadLocal(){
+  try{
+    const enc=localStorage.getItem('pt_data');
+    if(enc&&SESSION_PIN){
+      const pt=await decrypt(enc,SESSION_PIN);
+      const parsed=JSON.parse(pt);
+      if(parsed&&parsed.ws){data=parsed;return;}
+    }
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PIN LOCK SCREEN
+// ══════════════════════════════════════════════════════════════════
+let _pinBuf='',_pinPhase='choose',_pinFirst='';
+
+function setStep(n){
+  [0,1].forEach(i=>document.getElementById('dot'+i).className='step-dot'+(i<n?' done':i===n?' active':''));
+  ['login','pass'].forEach((s,i)=>document.getElementById('step-'+s).classList.toggle('active',i===n));
+}
+function goLogin(){_pinBuf='';updateDots('l');setStep(0);}
+function goSetup(){
+  _pinBuf='';_pinPhase='choose';_pinFirst='';
+  document.getElementById('pinSetupSubtitle').innerText='Choose a 4-digit PIN';
+  document.getElementById('setupPassErr').classList.remove('show');
+  updateDots('s');setStep(1);
+}
+function buildKeypad(id,onD,onDel){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML='';
+  [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k=>{
+    const b=document.createElement('button');
+    if(k===''){b.className='pin-key empty';}
+    else if(k==='⌫'){b.className='pin-key del';b.textContent='⌫';b.onclick=onDel;}
+    else{b.className='pin-key';b.textContent=k;b.onclick=()=>onD(String(k));}
+    el.appendChild(b);
+  });
+}
+function updateDots(p){
+  const px=p==='l'?'l':'s';
+  for(let i=0;i<4;i++){
+    const d=document.getElementById(px+'d'+i);
+    if(d)d.className='pin-dot'+(i<_pinBuf.length?' filled':'');
+  }
+}
+function shakeAndClear(p){
+  const px=p==='l'?'l':'s';
+  for(let i=0;i<4;i++){const d=document.getElementById(px+'d'+i);if(d)d.className='pin-dot error';}
+  setTimeout(()=>{_pinBuf='';updateDots(p);},600);
+}
+function loginDigit(d){if(_pinBuf.length>=4)return;_pinBuf+=d;updateDots('l');if(_pinBuf.length===4)setTimeout(doLogin,80);}
+function loginDel(){_pinBuf=_pinBuf.slice(0,-1);updateDots('l');}
+async function doLogin(){
+  const pin=_pinBuf;
+  const err=document.getElementById('loginErr');err.classList.remove('show');
+  try{
+    const v=localStorage.getItem('pt_pin_verify');
+    if(!v) throw new Error('No PIN set.');
+    if(await decrypt(v,pin)!=='PROTASKS_PIN_V1') throw new Error('wrong');
+    SESSION_PIN=pin;unlockApp();
+  }catch(e){
+    shakeAndClear('l');err.innerText='Incorrect PIN';err.classList.add('show');SESSION_PIN=null;
+    setTimeout(()=>err.classList.remove('show'),2000);
+  }
+}
+function setupDigit(d){if(_pinBuf.length>=4)return;_pinBuf+=d;updateDots('s');if(_pinBuf.length===4)setTimeout(doSetupPin,80);}
+function setupDel(){_pinBuf=_pinBuf.slice(0,-1);updateDots('s');}
+async function doSetupPin(){
+  const pin=_pinBuf;_pinBuf='';
+  if(_pinPhase==='choose'){
+    _pinFirst=pin;_pinPhase='confirm';
+    document.getElementById('pinSetupSubtitle').innerText='Confirm your PIN';
+    updateDots('s');
+  }else{
+    if(pin!==_pinFirst){
+      document.getElementById('setupPassErr').innerText='PINs do not match — try again.';
+      document.getElementById('setupPassErr').classList.add('show');
+      shakeAndClear('s');
+      setTimeout(()=>{_pinPhase='choose';_pinFirst='';document.getElementById('pinSetupSubtitle').innerText='Choose a 4-digit PIN';document.getElementById('setupPassErr').classList.remove('show');},1200);
+      return;
+    }
+    SESSION_PIN=pin;
+    const ver=await encrypt('PROTASKS_PIN_V1',pin);
+    localStorage.setItem('pt_pin_verify',ver);
+    unlockApp();
+  }
+}
+function unlockApp(){
+  hideConnectScreen();
+  document.getElementById('lockScreen').classList.add('hidden');
+  const app=document.getElementById('app');
+  app.style.display='flex';app.style.flexDirection='column';app.style.height='100%';
+  initApp();
+}
+function lockApp(){
+  SESSION_PIN=null;
+  data={wsNames:['Workspace 1','Workspace 2'],ws:[emptyWS(),emptyWS()],_v:0};
+  hideConnectScreen();
+  document.getElementById('app').style.display='none';
+  document.getElementById('lockScreen').classList.remove('hidden');
+  _pinBuf='';updateDots('l');
+  document.getElementById('loginErr').classList.remove('show');
+  setStep(0);
+}
+function showConnectScreen(){
+  document.getElementById('connectScreen').classList.add('show');
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('app').style.display='none';
+}
+function hideConnectScreen(){document.getElementById('connectScreen').classList.remove('show');}
+function showConnectErr(msg){const e=document.getElementById('connectErr');e.innerText=msg;e.classList.add('show');}
+function resetEverything(){if(!confirm('Clear all data? You will need to reconnect and set a new PIN.'))return;localStorage.clear();location.reload();}
+function changePin(){closeSettings();_pinBuf='';_pinPhase='choose';_pinFirst='';document.getElementById('pinSetupSubtitle').innerText='Choose a new PIN';document.getElementById('setupPassErr').classList.remove('show');updateDots('s');document.getElementById('lockScreen').classList.remove('hidden');setStep(1);}
+async function disconnectDropbox(){if(!confirm('Disconnect Dropbox?'))return;localStorage.removeItem('pt_refresh_token');_cachedToken=null;_tokenExpiry=0;closeSettings();showConnectScreen();}
+
+// ══════════════════════════════════════════════════════════════════
+//  WORKSPACE SWITCHING
+// ══════════════════════════════════════════════════════════════════
+function switchWS(idx){
+  currentWS=idx;
+  document.querySelectorAll('.ws-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.getElementById('drawerWsLabel').innerText=data.wsNames[idx]||'Workspace '+(idx+1);
+  document.getElementById('ws-btn-0').textContent=data.wsNames[0]||'Workspace 1';
+  document.getElementById('ws-btn-1').textContent=data.wsNames[1]||'Workspace 2';
+  switchSection('control',document.querySelector('[data-sec="control"]'));
+  render();
+}
+function openRenameWS(){
+  document.getElementById('ws0Name').value=data.wsNames[0]||'';
+  document.getElementById('ws1Name').value=data.wsNames[1]||'';
+  document.getElementById('renameOverlay').classList.add('open');
+  closeDrawer();
+}
+function closeRenameWS(){document.getElementById('renameOverlay').classList.remove('open');}
+function saveWSNames(){
+  const n0=document.getElementById('ws0Name').value.trim()||'Workspace 1';
+  const n1=document.getElementById('ws1Name').value.trim()||'Workspace 2';
+  data.wsNames=[n0,n1];
+  document.getElementById('ws-btn-0').textContent=n0;
+  document.getElementById('ws-btn-1').textContent=n1;
+  document.getElementById('drawerWsLabel').innerText=data.wsNames[currentWS];
+  closeRenameWS();scheduleSync();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════════════════
+function openSettings(){document.getElementById('settingsOverlay').classList.add('open');closeDrawer();}
+function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open');}
+function showSettingsStatus(type,msg){const el=document.getElementById('settingsStatus');el.className='s-status show '+type;el.innerText=msg;}
+async function forceReload(){
+  showSettingsStatus('ok','Reloading from Dropbox…');
+  const remote=await loadFromDropbox();
+  if(remote&&remote!=='empty'){data=remote;try{const enc=await encrypt(JSON.stringify(data),SESSION_PIN);localStorage.setItem('pt_data',enc);}catch(e){}render();showSettingsStatus('ok','✓ Reloaded.');}
+  else if(remote==='empty') showSettingsStatus('ok','No data in Dropbox yet.');
+  else showSettingsStatus('err','✗ Could not reach Dropbox.');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DUE DATE HELPERS
+// ══════════════════════════════════════════════════════════════════
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function dueDiffDays(due){
+  if(!due) return null;
+  const now=new Date();now.setHours(0,0,0,0);
+  return Math.round((new Date(due+'T00:00:00')-now)/(86400000));
+}
+function dueClass(due){
+  if(!due) return 'no-date';
+  const d=dueDiffDays(due);
+  if(d<0) return 'overdue';
+  if(d===0) return 'due-today';
+  if(d<=3) return 'due-soon';
+  return 'upcoming';
+}
+function dueLabel(due){
+  if(!due) return '+ due date';
+  const d=dueDiffDays(due);
+  const short=new Date(due+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(d<0) return '⚠ '+short+' (overdue)';
+  if(d===0) return '● Today';
+  if(d===1) return '● Tomorrow';
+  return '📅 '+short;
+}
+function isOverdue(due){return due&&dueDiffDays(due)<0;}
+function compareDue(a,b){if(!a.due&&!b.due)return 0;if(!a.due)return 1;if(!b.due)return -1;return a.due<b.due?-1:a.due>b.due?1:0;}
+
+let _datePopCleanup=null;
+function openDatePicker(chipEl,currentDue,onSave){
+  document.querySelectorAll('.date-pop').forEach(p=>p.remove());
+  if(_datePopCleanup){_datePopCleanup();_datePopCleanup=null;}
+  const pop=document.createElement('div');pop.className='date-pop';
+  pop.innerHTML=`<div class="date-pop-label">Set due date</div>
+    <input type="date" class="date-pop-input" id="datePopInput" value="${currentDue||''}">
+    <div class="date-pop-row">
+      <button class="date-pop-btn primary" onclick="__dateSave()">Save</button>
+      <button class="date-pop-btn clear" onclick="__dateClear()">Clear</button>
+      <button class="date-pop-btn" onclick="__dateCancel()">✕</button>
+    </div>`;
+  document.body.appendChild(pop);
+  const rect=chipEl.getBoundingClientRect();
+  let top=rect.bottom+6,left=rect.left;
+  if(left+220>window.innerWidth)left=window.innerWidth-228;
+  if(top+160>window.innerHeight)top=rect.top-166;
+  pop.style.top=top+'px';pop.style.left=left+'px';
+  pop.querySelector('#datePopInput').focus();
+  window.__dateSave=()=>{onSave(pop.querySelector('#datePopInput').value||null);pop.remove();cleanup();};
+  window.__dateClear=()=>{onSave(null);pop.remove();cleanup();};
+  window.__dateCancel=()=>{pop.remove();cleanup();};
+  pop.querySelector('#datePopInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();window.__dateSave();}if(e.key==='Escape'){pop.remove();cleanup();}});
+  function cleanup(){document.removeEventListener('mousedown',outsideClick);_datePopCleanup=null;}
+  function outsideClick(e){if(!pop.contains(e.target)&&e.target!==chipEl){pop.remove();cleanup();}}
+  setTimeout(()=>document.addEventListener('mousedown',outsideClick),0);
+  _datePopCleanup=cleanup;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════════════════
+function render(){renderControl();renderProjects();renderReference();renderToday();updateBadges();}
+const showDone=()=>document.getElementById('showDoneChk').checked;
+
+function renderControl(){
+  const list=document.getElementById('controlList');
+  let rows=[];
+  ws().control.forEach(t=>rows.push({...t,_src:'Manual',_projName:null,_color:null}));
+  ws().projects.forEach(p=>(p.subtasks||[]).forEach(s=>rows.push({...s,_src:'Project',_projName:p.name,_pid:p.id,_color:p.color||null})));
+  if(!rows.length){list.innerHTML='<div class="empty-state"><div class="ei">◈</div>No tasks yet</div>';return;}
+  list.innerHTML='';
+  const todayRows=rows.filter(t=>t.status==='Today');
+  const datedRows=rows.filter(t=>t.status==='Next'&&t.due).sort(compareDue);
+  const nextRows=rows.filter(t=>t.status==='Next'&&!t.due);
+  const waitingRows=rows.filter(t=>t.status==='Waiting');
+  const doneRows=rows.filter(t=>t.status==='Done');
+  const sections=[
+    {label:'Today',badge:'badge-Today',rows:todayRows},
+    {label:'Upcoming',badge:'badge-Next',rows:datedRows},
+    {label:'Next',badge:'badge-Next',rows:nextRows},
+    {label:'Waiting',badge:'badge-Waiting',rows:waitingRows},
+    {label:'Done',badge:'badge-Done',rows:doneRows},
+  ];
+  sections.forEach(sec=>{
+    if(!sec.rows.length) return;
+    if(sec.label==='Done'&&!showDone()) return;
+    const grp=document.createElement('div');grp.className='status-group';
+    const lbl=document.createElement('div');lbl.className='status-group-label';
+    lbl.innerHTML=`<span class="badge ${sec.badge}" style="cursor:default;pointer-events:none">${sec.label}</span>`;
+    grp.appendChild(lbl);
+    const wrap=document.createElement('div');
+    sec.rows.forEach((t,i)=>{wrap.appendChild(makeCtrlRow(t,i,sec.rows.length));});
+    grp.appendChild(wrap);list.appendChild(grp);
+  });
+}
+
+function makeCtrlRow(t,i,total){
+  const el=document.createElement('div');
+  el.className='t-row ctrl'+(t.done?' done-row':'')+(t.status==='Today'?' today-hl':'')+(isOverdue(t.due)?' overdue-row':'');
+  if(i===0&&total>1) el.style.borderRadius='var(--radius) var(--radius) 0 0';
+  if(i===total-1&&total>1) el.style.borderRadius='0 0 var(--radius) var(--radius)';
+  if(total===1) el.style.borderRadius='var(--radius)';
+  el.dataset.id=t.id;el.dataset.src=t._src;if(t._pid)el.dataset.pid=t._pid;
+  const cid='chkc-'+t.id;
+  const dot=t._src==='Project'&&t._color?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${t._color};margin-right:2px;flex-shrink:0"></span>`:'';
+  const dueChip=`<span class="due-chip ${dueClass(t.due)}" id="dc-${t.id}">${dueLabel(t.due)}</span>`;
+  el.innerHTML=`
+    <div class="c-check">
+      <input type="checkbox" class="t-check" id="${cid}" ${t.done?'checked':''}>
+      <label class="check-vis" for="${cid}"></label>
+    </div>
+    <div class="c-name">
+      <div class="t-name" contenteditable="${t._src==='Manual'}" data-ph="Task name"
+        onblur="updateCtrlName('${t.id}','${t._src}','${t._pid||''}',this)"
+        onkeydown="handleKeydown(event)"
+        ${t._src==='Project'?`onclick="switchSection('projects',document.querySelector('[data-sec=projects]'))" style="cursor:pointer"`:''}
+      >${escHtml(t.name)}</div>
+      ${t._src==='Project'?`<span class="t-source">${dot}${escHtml(t._projName||'')}</span>`:''}
+      <div class="due-wrap">${dueChip}</div>
+    </div>
+    <div class="c-status">
+      <span class="badge ${BADGE_CLS[t.status]||'badge-Waiting'}" onclick="cycleCtrlStatus('${t.id}','${t._src}','${t._pid||''}')">${t.status}</span>
+    </div>
+    <div class="c-del"><button class="del-btn" onclick="deleteCtrl('${t.id}','${t._src}','${t._pid||''}')">✕</button></div>`;
+  el.querySelector('.t-check').addEventListener('change',function(){toggleDoneCtrl(t.id,t._src,t._pid||'',this);});
+  const chip=el.querySelector('#dc-'+t.id);
+  if(chip) chip.addEventListener('click',()=>{
+    openDatePicker(chip,t.due||null,val=>{
+      if(t._src==='Manual'){const item=ws().control.find(x=>x.id===t.id);if(item)item.due=val||null;}
+      else if(t._src==='Project'&&t._pid){const p=ws().projects.find(x=>x.id===t._pid);const s=p&&p.subtasks.find(x=>x.id===t.id);if(s)s.due=val||null;}
+      save_render();
+    });
+  });
+  return el;
+}
+
+function renderProjects(){
+  const list=document.getElementById('projectsList');
+  if(!ws().projects.length){list.innerHTML='<div class="empty-state"><div class="ei">⬡</div>No projects yet</div>';return;}
+  list.innerHTML='';
+  ws().projects.forEach((p,pidx)=>{
+    const color=p.color||PROJ_COLORS[0];
+    const isFirst=pidx===0,isLast=pidx===ws().projects.length-1;
+    const grp=document.createElement('div');grp.className='proj-group';grp.dataset.pid=p.id;
+    const hasSubs=p.subtasks&&p.subtasks.length>0;
+    const hdr=document.createElement('div');
+    hdr.className='proj-hdr-row'+(hasSubs?'':' solo')+(p.done?' done-row':'')+(isOverdue(p.due)?' overdue-row':'');
+    hdr.style.boxShadow=`inset 3px 0 0 ${color}`;
+    hdr.dataset.id=p.id;const ckid='chkp-'+p.id;
+    hdr.innerHTML=`
+      <div class="move-btns">
+        <button class="move-btn" onclick="moveProject('${p.id}',-1)" ${isFirst?'disabled':''}>▲</button>
+        <button class="move-btn" onclick="moveProject('${p.id}',1)" ${isLast?'disabled':''}>▼</button>
+      </div>
+      <div class="c-check">
+        <input type="checkbox" class="t-check" id="${ckid}" ${p.done?'checked':''}>
+        <label class="check-vis" for="${ckid}"></label>
+      </div>
+      <div class="c-proj-name" style="position:relative">
+        <span class="proj-color-dot" style="background:${color}" onclick="openColorPicker('${p.id}',this)"></span>
+        <button class="collapse-btn ${p.collapsed?'collapsed':''}" onclick="toggleCollapse('${p.id}')" style="color:${color}">▼</button>
+        <div class="proj-name-text" contenteditable="true" data-ph="Project name"
+          onblur="updateProjName('${p.id}',this)" onkeydown="handleKeydown(event)"
+          style="color:${color}">${escHtml(p.name)}</div>
+        <button class="add-sub-btn" onclick="addSubtask('${p.id}')">+ subtask</button>
+      </div>
+      <div class="c-status">
+        <span class="badge ${BADGE_CLS[p.status]||'badge-Waiting'}" onclick="cycleProjStatus('${p.id}')">${p.status}</span>
+      </div>
+      <div class="c-del"><button class="del-btn" onclick="deleteProject('${p.id}')">✕</button></div>`;
+    hdr.querySelector('.t-check').addEventListener('change',function(){toggleDoneProject(p.id,this);});
+    grp.appendChild(hdr);
+    if(hasSubs){
+      const subsDiv=document.createElement('div');
+      subsDiv.className='proj-subs'+(p.collapsed?' collapsed':'');
+      subsDiv.dataset.pid=p.id;
+      const sorted=[...p.subtasks].sort(compareDue);
+      sorted.forEach(s=>{
+        const sel=document.createElement('div');
+        sel.className='t-row sub'+(s.done?' done-row':'')+(isOverdue(s.due)?' overdue-row':'');
+        sel.dataset.id=s.id;sel.dataset.pid=p.id;
+        const sid='chks-'+s.id;
+        const sChip=`<span class="due-chip ${dueClass(s.due)}" id="dcs-${s.id}">${dueLabel(s.due)}</span>`;
+        sel.innerHTML=`
+          <div class="c-check">
+            <input type="checkbox" class="t-check" id="${sid}" ${s.done?'checked':''}>
+            <label class="check-vis" for="${sid}"></label>
+          </div>
+          <div class="c-name">
+            <div class="t-name" contenteditable="true" data-ph="Subtask"
+              onblur="updateSubName('${p.id}','${s.id}',this)" onkeydown="handleKeydown(event)">${escHtml(s.name)}</div>
+            <div class="due-wrap">${sChip}</div>
+          </div>
+          <div class="c-status">
+            <span class="badge ${BADGE_CLS[s.status]||'badge-Waiting'}" onclick="cycleSubStatus('${p.id}','${s.id}')">${s.status}</span>
+          </div>
+          <div class="c-del"><button class="del-btn" onclick="deleteSubtask('${p.id}','${s.id}')">✕</button></div>`;
+        sel.querySelector('.t-check').addEventListener('change',function(){toggleDoneSub(p.id,s.id,this);});
+        const sc=sel.querySelector('#dcs-'+s.id);
+        if(sc) sc.addEventListener('click',()=>{
+          openDatePicker(sc,s.due||null,val=>{
+            const proj=ws().projects.find(x=>x.id===p.id);
+            const sub=proj&&proj.subtasks.find(x=>x.id===s.id);
+            if(sub){sub.due=val||null;}save_render();
+          });
+        });
+        subsDiv.appendChild(sel);
+      });
+      grp.appendChild(subsDiv);
+    }
+    list.appendChild(grp);
+  });
+}
+
+function renderReference(){
+  const list=document.getElementById('referenceList');
+  if(!ws().reference.length){list.innerHTML='<div class="empty-state"><div class="ei">◻</div>No reference items</div>';return;}
+  list.innerHTML='';
+  ws().reference.forEach(r=>{
+    const el=document.createElement('div');el.className='t-row ref';el.dataset.id=r.id;
+    el.innerHTML=`
+      <div class="ref-cell" contenteditable="true" data-ph="Item" onblur="updateRef('${r.id}','item',this)" onkeydown="handleKeydown(event)">${escHtml(r.item)}</div>
+      <div class="ref-cell notes" contenteditable="true" data-ph="Notes" onblur="updateRef('${r.id}','notes',this)" onkeydown="handleKeydown(event)">${escHtml(r.notes)}</div>
+      <div class="c-del"><button class="del-btn" onclick="deleteRef('${r.id}')">✕</button></div>`;
+    list.appendChild(el);
+  });
+}
+
+function renderToday(){
+  const items=[];
+  ws().control.forEach(t=>{if(t.status==='Today')items.push({id:t.id,name:t.name,done:t.done,src:'control',pid:null,projName:null,color:null});});
+  ws().projects.forEach(p=>(p.subtasks||[]).forEach(s=>{if(s.status==='Today')items.push({id:s.id,name:s.name,done:s.done,src:'sub',pid:p.id,projName:p.name,color:p.color||null});}));
+  document.getElementById('todayCount').innerText=items.filter(i=>!i.done).length;
+  const rowsEl=document.getElementById('todayRows');rowsEl.innerHTML='';
+  items.forEach(item=>{
+    if(item.done&&!showDone()) return;
+    const div=document.createElement('div');div.className='today-row-item'+(item.done?' done-today':'');
+    const cid='trid-'+item.id;
+    const dot=item.color?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${item.color};margin-right:2px;vertical-align:middle"></span>`:'';
+    div.innerHTML=`
+      <input type="checkbox" class="tri-check" id="${cid}" ${item.done?'checked':''}>
+      <label class="tri-visual" for="${cid}"></label>
+      <span class="tri-name">${escHtml(item.name)}</span>
+      ${item.projName?`<span class="tri-project">${dot}${escHtml(item.projName)}</span>`:''}`;
+    div.querySelector('.tri-check').addEventListener('change',function(){
+      if(item.src==='control') toggleDoneCtrl(item.id,'Manual','',this);
+      else toggleDoneSub(item.pid,item.id,this);
+    });
+    rowsEl.appendChild(div);
+  });
+}
+
+function updateBadges(){
+  document.getElementById('db-control').innerText=ws().control.filter(t=>!t.done).length+ws().projects.reduce((a,p)=>a+(p.subtasks||[]).filter(s=>!s.done).length,0);
+  document.getElementById('db-projects').innerText=ws().projects.length;
+  document.getElementById('db-reference').innerText=ws().reference.length;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ACTIONS — CONTROL
+// ══════════════════════════════════════════════════════════════════
+function addManualTask(){ws().control.push({id:uid(),name:'New Task',status:'Waiting',done:false,due:null});save_render();setTimeout(()=>focusLast('controlList'),50);}
+function updateCtrlName(id,src,pid,el){
+  const name=el.innerText.trim();
+  if(src==='Manual'){const t=ws().control.find(x=>x.id===id);if(t&&name)t.name=name;}
+  else if(src==='Project'&&pid){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===id);if(s&&name)s.name=name;}
+  scheduleSync();renderToday();updateBadges();
+}
+function cycleCtrlStatus(id,src,pid){
+  if(src==='Project'&&pid){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===id);if(s){s.status=nextStatus(s.status);if(s.status==='Done')s.done=true;else s.done=false;}}
+  else{const t=ws().control.find(x=>x.id===id);if(t){t.status=nextStatus(t.status);if(t.status==='Done')t.done=true;else t.done=false;}}
+  save_render();
+}
+function toggleDoneCtrl(id,src,pid,chk){
+  if(src==='Project'&&pid){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===id);if(s){s.done=chk.checked;s.status=chk.checked?'Done':'Waiting';}}
+  else{const t=ws().control.find(x=>x.id===id);if(t){t.done=chk.checked;t.status=chk.checked?'Done':'Waiting';}}
+  save_render();
+}
+function deleteCtrl(id,src,pid){
+  if(src==='Project'&&pid){const p=ws().projects.find(x=>x.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==id);}
+  else data.ws[currentWS].control=ws().control.filter(t=>t.id!==id);
+  save_render();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ACTIONS — PROJECTS
+// ══════════════════════════════════════════════════════════════════
+function addProject(){
+  const p={id:uid(),name:'New Project',status:'Waiting',done:false,collapsed:false,due:null,
+    color:PROJ_COLORS[ws().projects.length%PROJ_COLORS.length],
+    subtasks:[{id:uid(),name:'New Subtask',status:'Waiting',done:false,due:null}]};
+  ws().projects.push(p);save_render();
+  setTimeout(()=>{const el=document.querySelector(`[data-pid="${p.id}"] .proj-name-text`);if(el){el.focus();selectAll(el);}},50);
+}
+function addSubtask(pid){
+  const p=ws().projects.find(x=>x.id===pid);if(!p)return;
+  p.subtasks.push({id:uid(),name:'New Subtask',status:'Waiting',done:false,due:null});
+  p.collapsed=false;save_render();
+  setTimeout(()=>{const subs=document.querySelector(`.proj-subs[data-pid="${pid}"]`);if(subs){const el=subs.lastElementChild&&subs.lastElementChild.querySelector('.t-name');if(el){el.focus();selectAll(el);}}},50);
+}
+function updateProjName(pid,el){const p=ws().projects.find(x=>x.id===pid);if(p&&el.innerText.trim())p.name=el.innerText.trim();scheduleSync();renderControl();renderToday();updateBadges();}
+function cycleProjStatus(pid){const p=ws().projects.find(x=>x.id===pid);if(!p)return;p.status=nextStatus(p.status);if(p.status==='Done')p.done=true;else p.done=false;save_render();}
+function toggleDoneProject(pid,chk){const p=ws().projects.find(x=>x.id===pid);if(!p)return;p.done=chk.checked;p.status=chk.checked?'Done':'Waiting';save_render();}
+function toggleCollapse(pid){const p=ws().projects.find(x=>x.id===pid);if(!p)return;p.collapsed=!p.collapsed;save_render();}
+function moveProject(pid,dir){const projs=ws().projects;const idx=projs.findIndex(p=>p.id===pid);if(idx===-1)return;const ni=idx+dir;if(ni<0||ni>=projs.length)return;[projs[idx],projs[ni]]=[projs[ni],projs[idx]];save_render();}
+function deleteProject(pid){data.ws[currentWS].projects=ws().projects.filter(p=>p.id!==pid);save_render();}
+function updateSubName(pid,sid,el){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===sid);if(s&&el.innerText.trim())s.name=el.innerText.trim();scheduleSync();}
+function cycleSubStatus(pid,sid){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===sid);if(!s)return;s.status=nextStatus(s.status);if(s.status==='Done')s.done=true;else s.done=false;save_render();}
+function toggleDoneSub(pid,sid,chk){const p=ws().projects.find(x=>x.id===pid);const s=p&&p.subtasks.find(x=>x.id===sid);if(!s)return;s.done=chk.checked;s.status=chk.checked?'Done':'Waiting';save_render();}
+function deleteSubtask(pid,sid){const p=ws().projects.find(x=>x.id===pid);if(p)p.subtasks=p.subtasks.filter(s=>s.id!==sid);save_render();}
+function openColorPicker(pid,dotEl){
+  document.querySelectorAll('.color-picker-pop').forEach(p=>p.remove());
+  const proj=ws().projects.find(p=>p.id===pid);
+  const pop=document.createElement('div');pop.className='color-picker-pop';
+  PROJ_COLORS.forEach(c=>{
+    const sw=document.createElement('div');sw.className='color-swatch'+(proj&&proj.color===c?' selected':'');sw.style.background=c;
+    sw.onclick=e=>{e.stopPropagation();if(proj)proj.color=c;pop.remove();save_render();};pop.appendChild(sw);
+  });
+  dotEl.closest('.c-proj-name').appendChild(pop);
+  setTimeout(()=>{const close=e=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};document.addEventListener('click',close);},0);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ACTIONS — REFERENCE
+// ══════════════════════════════════════════════════════════════════
+function addRefItem(){ws().reference.push({id:uid(),item:'New Item',notes:''});save_render();setTimeout(()=>focusLast('referenceList'),50);}
+function updateRef(id,field,el){const r=ws().reference.find(x=>x.id===id);if(r)r[field]=el.innerText;scheduleSync();}
+function deleteRef(id){data.ws[currentWS].reference=ws().reference.filter(r=>r.id!==id);save_render();}
+
+// ══════════════════════════════════════════════════════════════════
+//  NAV / UTILS
+// ══════════════════════════════════════════════════════════════════
+function handleKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.target.blur();}}
+function toggleDrawer(){document.body.classList.toggle('drawer-open');}
+function closeDrawer(){document.body.classList.remove('drawer-open');}
+function switchSection(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.drawer-item').forEach(d=>d.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  closeDrawer();
+}
+function selectAll(el){const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}
+function focusLast(listId){const list=document.getElementById(listId);const last=list.lastElementChild;const el=last&&last.querySelector('[contenteditable]');if(el){el.focus();selectAll(el);}}
+function save_render(){scheduleSync();render();}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pro-tasks-backup.json';a.click();
+}
+function importData(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const reader=new FileReader();
+    reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(parsed&&parsed.ws){data=parsed;scheduleSync();render();}else alert('Invalid backup file.');}catch(e){alert('Invalid JSON.');}};
+    reader.readAsText(e.target.files[0]);
+  };input.click();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+async function initApp(){
+  await loadLocal();
+  updateWSButtons();
+  render();
+  const remote=await loadFromDropbox();
+  if(remote==='empty'){await saveToDropbox();}
+  else if(remote!==null){
+    data=remote;
+    try{const enc=await encrypt(JSON.stringify(data),SESSION_PIN);localStorage.setItem('pt_data',enc);}catch(e){}
+    updateWSButtons();render();
+  }
+}
+
+function updateWSButtons(){
+  document.getElementById('ws-btn-0').textContent=data.wsNames[0]||'Workspace 1';
+  document.getElementById('ws-btn-1').textContent=data.wsNames[1]||'Workspace 2';
+  document.getElementById('drawerWsLabel').innerText=data.wsNames[currentWS]||'Workspace 1';
+}
+
+window.onload=async()=>{
+  buildKeypad('loginKeypad',loginDigit,loginDel);
+  buildKeypad('setupKeypad',setupDigit,setupDel);
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code'),oauthErr=params.get('error');
+  if(oauthErr){
+    window.history.replaceState({},document.title,window.location.pathname);
+    showConnectScreen();showConnectErr('Dropbox connection was cancelled.');return;
+  }
+  if(code){
+    try{
+      await handleOAuthCallback(code);
+      hideConnectScreen();
+      if(isPinSetup()){setStep(0);document.getElementById('lockScreen').classList.remove('hidden');}
+      else{goSetup();document.getElementById('lockScreen').classList.remove('hidden');}
+    }catch(e){
+      window.history.replaceState({},document.title,window.location.pathname);
+      showConnectScreen();showConnectErr('Connection failed: '+e.message);
+    }
+    return;
+  }
+  if(!isConnected()){showConnectScreen();return;}
+  if(!isPinSetup()){goSetup();}else{setStep(0);}
+};
+</script>
+</body>
+</html>
