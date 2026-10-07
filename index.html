@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<!-- Pro-Tasks build-11 (Phase 4) -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pro Tasks</title>
+<link rel="stylesheet" href="css/app.css?v=11">
+<link rel="stylesheet" href="css/project-view.css?v=11">
+</head>
+<body>
+
+<!-- ══ CONNECT SCREEN ══ -->
+<div id="connectScreen">
+  <div class="lock-card">
+    <div class="lock-icon">💼</div>
+    <div class="lock-title">Pro Tasks</div>
+    <div class="lock-subtitle">Connect your Dropbox to sync across all your devices.</div>
+    <button onclick="startOAuth()" class="lock-btn">
+      <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
+        <path d="M10 5L20 12L10 19L0 12Z" fill="white"/>
+        <path d="M30 5L40 12L30 19L20 12Z" fill="white"/>
+        <path d="M0 26L10 19L20 26L10 33Z" fill="white"/>
+        <path d="M20 26L30 19L40 26L30 33Z" fill="white"/>
+        <path d="M10 35L20 28L30 35L20 42Z" fill="white"/>
+      </svg>
+      <span>Connect to Dropbox</span>
+    </button>
+    <div id="connectErr" class="lock-err"></div>
+  </div>
+</div>
+
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot0"></div>
+      <div class="step-dot" id="dot1"></div>
+    </div>
+    <!-- login -->
+    <div class="setup-step active" id="step-login">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-title">Pro Tasks</div>
+      <div class="lock-subtitle">Enter your 4-digit PIN</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="ld0"></div><div class="pin-dot" id="ld1"></div>
+        <div class="pin-dot" id="ld2"></div><div class="pin-dot" id="ld3"></div>
+      </div>
+      <div id="loginErr" class="lock-err"></div>
+      <div class="pin-keypad" id="loginKeypad"></div>
+      <button class="lock-btn secondary" onclick="goSetup()" style="font-size:0.78em;padding:8px">First time on this device?</button>
+    </div>
+    <!-- setup -->
+    <div class="setup-step" id="step-pass">
+      <div class="lock-icon">🔑</div>
+      <div class="lock-title">Choose a PIN</div>
+      <div class="lock-subtitle" id="pinSetupSubtitle">Choose a 4-digit PIN</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="sd0"></div><div class="pin-dot" id="sd1"></div>
+        <div class="pin-dot" id="sd2"></div><div class="pin-dot" id="sd3"></div>
+      </div>
+      <div id="setupPassErr" class="lock-err"></div>
+      <div class="pin-keypad" id="setupKeypad"></div>
+      <button class="lock-btn secondary" onclick="goLogin()" style="font-size:0.78em;padding:8px">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <div id="header">
+    <div id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></div>
+    <div id="header-title">Pro Tasks</div>
+    <div id="wsSwitcher">
+      <button class="ws-btn active" id="ws-btn-0" onclick="switchWS(0)">Workspace 1</button>
+      <button class="ws-btn" id="ws-btn-1" onclick="switchWS(1)">Workspace 2</button>
+    </div>
+    <div id="header-actions">
+      <div id="syncDot" onclick="syncNow()" title="Sync status"></div>
+      <button class="hdr-btn" onclick="openMM()" title="Meeting Minutes">📝</button>
+      <button class="hdr-btn" onclick="openSettings()">⚙</button>
+      <button class="hdr-btn" onclick="lockApp()">🔒</button>
+    </div>
+  </div>
+
+  <div id="todayPanel">
+    <div id="todayHeader">
+      <div id="todayMeta"><span class="label">Today</span><span id="todayCount">0</span></div>
+      <div id="showDoneWrap">
+        <label class="toggle">
+          <input type="checkbox" id="showDoneChk" onchange="render()">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
+        <label for="showDoneChk">Show done</label>
+      </div>
+    </div>
+    <div id="todayRows"></div>
+  </div>
+
+  <div id="body">
+    <div id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div id="drawer">
+      <div class="drawer-ws-label" id="drawerWsLabel">Workspace 1</div>
+      <div class="drawer-item active" data-sec="control" onclick="switchSection('control',this)">
+        <span class="di-icon">◈</span> Control <span class="di-badge" id="db-control">0</span>
+      </div>
+      <div class="drawer-item" data-sec="projects" onclick="switchSection('projects',this)">
+        <span class="di-icon">⬡</span> Projects <span class="di-badge" id="db-projects">0</span>
+      </div>
+      <div class="drawer-item" data-sec="reference" onclick="switchSection('reference',this)">
+        <span class="di-icon">◻</span> Reference <span class="di-badge" id="db-reference">0</span>
+      </div>
+      <div class="drawer-item" data-sec="maintenance" onclick="switchSection('maintenance',this)">
+        <span class="di-icon">🔧</span> Maintenance <span class="di-badge" id="db-maintenance">0</span>
+      </div>
+      <div class="drawer-divider"></div>
+      <div class="drawer-footer">
+        <button class="drawer-footer-btn" onclick="openRenameWS()">✏ Rename workspaces</button>
+        <button class="drawer-footer-btn" onclick="openSettings()">⚙ Settings</button>
+        <button class="drawer-footer-btn" onclick="exportData()">↓ Export backup</button>
+        <button class="drawer-footer-btn" onclick="importData()">↑ Import backup</button>
+        <button class="drawer-footer-btn" onclick="lockApp()">🔒 Lock</button>
+      </div>
+    </div>
+
+    <div id="content">
+      <div id="section-control" class="section active">
+        <div class="section-header">
+          <div class="section-title">Control</div>
+          <button class="add-btn" onclick="addManualTask()">+ Task</button>
+        </div>
+        <div class="task-list" id="controlList"></div>
+      </div>
+      <div id="section-projects" class="section">
+        <div class="section-header">
+          <div class="section-title">Projects</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="kanban-toggle-btn" id="kanbanToggleBtn" onclick="toggleKanbanView()" title="Kanban view">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0"><rect x="0" y="0" width="3" height="14" rx="1" fill="currentColor"/><rect x="4.5" y="0" width="3" height="9" rx="1" fill="currentColor"/><rect x="9" y="0" width="3" height="11" rx="1" fill="currentColor"/></svg>
+              Kanban
+            </button>
+            <button class="add-btn" onclick="addProject()">+ Project</button>
+          </div>
+        </div>
+        <div id="projectsList"></div>
+        <div id="kanbanView" style="display:none"></div>
+      </div>
+      <div id="section-reference" class="section">
+        <div class="section-header">
+          <div class="section-title">Reference</div>
+          <button class="add-btn" onclick="addRefItem()">+ Item</button>
+        </div>
+        <div class="task-list" id="referenceList"></div>
+      </div>
+      <div id="section-maintenance" class="section">
+        <div class="section-header"><div class="section-title">Maintenance</div><button class="add-btn" onclick="addMaintCategory()">+ Category</button></div>
+        <div id="maintList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME WORKSPACES MODAL -->
+<div id="renameOverlay" class="modal-overlay" onclick="if(event.target.id==='renameOverlay')closeRenameWS()">
+  <div class="modal">
+    <h3>Rename Workspaces</h3>
+    <div class="form-row">
+      <div class="form-label">Workspace 1 name</div>
+      <input type="text" id="ws0Name" class="form-input" placeholder="e.g. Client Work">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Workspace 2 name</div>
+      <input type="text" id="ws1Name" class="form-input" placeholder="e.g. Side Projects">
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveWSNames()">Save</button>
+      <button class="btn" onclick="closeRenameWS()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SYNC CONFLICT MODAL -->
+<div id="conflictOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3>⚠ Changed on another device</h3>
+    <div class="s-desc">Your data was saved from another device since this one last synced, and this device also has changes. Pick which version to keep. The other version is downloaded as a backup file, so nothing is lost.</div>
+    <div class="conflict-times">
+      Other device last edited: <b id="conflictOtherTime"></b><br>
+      This device last edited: <b id="conflictMineTime"></b>
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="resolveConflict('remote')">Use other device's version</button>
+      <button class="btn" onclick="resolveConflict('local')">Keep this device's</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsOverlay" class="modal-overlay" onclick="if(event.target.id==='settingsOverlay')closeSettings()">
+  <div class="modal">
+    <h3>⚙ Settings &amp; Sync</h3>
+    <div class="s-desc">
+      Connected to Dropbox via OAuth. Data syncs to <code>pro-tasks.json</code>
+      in your Dropbox app folder. Your PIN encrypts data locally.
+      If two devices save different changes, you'll be asked which to keep.
+    </div>
+    <div id="settingsStatus" class="s-status"></div>
+    <div id="syncInfo" class="s-sync-info"></div>
+    <div class="s-row">
+      <button class="s-btn" onclick="syncNow()">↻ Sync now</button>
+      <button class="s-btn danger" onclick="forceReload()">↺ Force reload</button>
+    </div>
+    <div class="s-row">
+      <button class="s-btn" onclick="changePin()">Change PIN</button>
+      <button class="s-btn danger" onclick="disconnectDropbox()">Disconnect Dropbox</button>
+    </div>
+    <div class="s-row">
+      <button class="s-btn danger" onclick="resetEverything()">⚠ Reset everything</button>
+      <button class="s-btn" onclick="closeSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAINTENANCE MODAL (Pro-tasks) -->
+<div id="maintOverlay" class="modal-overlay" onclick="if(event.target.id==='maintOverlay')closeMaintModal()">
+  <div class="modal">
+    <h3 id="maintModalTitle">New Task</h3>
+    <div class="form-row" id="maintCatSelectWrap">
+      <div class="form-label">Category</div>
+      <select id="maintCatSelect" class="form-select"></select>
+    </div>
+    <div class="form-row"><div class="form-label">Task name</div><input type="text" id="maintName" class="form-input" placeholder="e.g. Review KPIs"></div>
+    <div class="form-row"><div class="form-label">Frequency</div>
+      <select id="maintFreq" class="form-select" onchange="onMaintFreqChange()">
+        <option value="daily">Daily</option><option value="every_n_days">Every N days</option>
+        <option value="weekly" selected>Weekly</option><option value="biweekly">Every 2 weeks</option>
+        <option value="monthly_date">Monthly</option><option value="every_n_months">Every N months</option>
+      </select>
+    </div>
+    <div class="form-row" id="maintIntervalWrap" style="display:none"><div class="form-label" id="maintIntervalLabel">Every how many days?</div><input type="number" id="maintInterval" class="form-input" value="7" min="1" max="365"></div>
+    <div class="form-row"><div class="form-label">Anchor date</div><input type="date" id="maintAnchor" class="form-input"></div>
+    <div class="btn-row">
+      <button class="btn primary" onclick="saveMaintTask()">Save</button>
+      <button class="btn danger" id="maintDeleteBtn" onclick="deleteMaintTask()" style="display:none">Delete</button>
+      <button class="btn" onclick="closeMaintModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MEETING MINUTES OVERLAY -->
+<div id="mmOverlay">
+  <div id="mmHeader">
+    <div id="mmTitle">📝 Meeting Minutes</div>
+    <button class="hdr-btn" onclick="exportMMtoDocx()" title="Export to Word">⬇ .docx</button>
+    <button class="hdr-btn" onclick="closeMM()" style="border-color:var(--border)">✕ Close</button>
+  </div>
+  <div class="mm-content">
+
+    <div class="mm-block">
+      <div class="mm-block-label">Date</div>
+      <input type="date" id="mm-date" class="mm-field">
+    </div>
+
+    <div class="mm-block">
+      <div class="mm-block-label">People</div>
+      <input type="text" id="mm-people" class="mm-field" placeholder="e.g. Alice, Bob, Carol">
+    </div>
+
+    <div class="mm-block">
+      <div class="mm-block-label">Mode</div>
+      <input type="text" id="mm-mode" class="mm-field" placeholder="e.g. Video, In-person, Standup, Phone">
+    </div>
+
+    <div class="mm-block">
+      <div class="mm-block-label">Agenda</div>
+      <textarea id="mm-agenda" class="mm-field mm-textarea" placeholder="Meeting agenda items…"></textarea>
+    </div>
+
+    <div class="mm-block">
+      <div class="mm-block-label">Minutes</div>
+      <textarea id="mm-minutes" class="mm-field mm-textarea mm-minutes" placeholder="Meeting notes, discussion points, decisions…&#10;&#10;Use • or - for bullet points&#10;Use 1. 2. 3. for numbered lists"></textarea>
+    </div>
+
+    <div class="mm-block">
+      <div class="mm-block-label">Action Items</div>
+      <div style="margin-bottom:8px">
+        <label style="font-size:0.75em;color:var(--text2)">Assign to project:</label>
+        <select id="mm-proj-sel" class="mm-proj-sel" style="margin-top:4px"></select>
+      </div>
+      <div id="mm-actions-list"></div>
+      <button class="mm-add-action-btn" onclick="addMMAction()">+ Add action item</button>
+    </div>
+
+  </div>
+  <div class="mm-footer">
+    <button class="mm-btn export" onclick="exportMMtoDocx()">⬇ Export to Word</button>
+    <button class="mm-btn primary" onclick="commitMMActions()">✓ Add Actions to Project</button>
+    <button class="mm-btn" onclick="closeMM()">Close</button>
+  </div>
+</div>
+
+<script src="js/crypto.js?v=11"></script>
+<script src="js/sync.js?v=11"></script>
+<script src="js/schedule.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
+<script src="js/lock.js?v=11"></script>
+<script src="js/maintenance.js?v=11"></script>
+<script src="js/kanban.js?v=11"></script>
+<script src="js/minutes.js?v=11"></script>
+<script src="js/project-view.js?v=11"></script>
+<script src="js/timeline.js?v=11"></script>
+<script src="js/checks.js?v=11"></script>
+<script src="js/modules.js?v=11"></script>
+</body>
+</html>
